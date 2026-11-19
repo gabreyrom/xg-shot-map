@@ -2,6 +2,8 @@
 
 An interactive, single-file expected goals (xG) explorer for soccer. Click or drag anywhere on the pitch, adjust shot conditions, and immediately see the predicted scoring probability from a logistic regression model trained on StatsBomb Open Data — plus a live spatial heatmap and a head-to-head benchmark against StatsBomb's own xG model.
 
+> **Website:** https://gabrielreynosoromero.com/xg-shot-map/
+
 > **Note:** This is a simple vibe-coded app built with **Gemini 4 Neon**.
 
 ## Features
