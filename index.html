@@ -713,7 +713,7 @@
 
     .body-part-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 7px;
     }
 
@@ -1470,8 +1470,7 @@
               <span>Body part</span>
             </div>
             <div class="body-part-grid" role="group" aria-label="Body part">
-              <button type="button" class="bp-btn active" data-body-part="Right Foot" aria-pressed="true">Right Foot</button>
-              <button type="button" class="bp-btn" data-body-part="Left Foot" aria-pressed="false">Left Foot</button>
+              <button type="button" class="bp-btn active" data-body-part="Foot" aria-pressed="true">Foot</button>
               <button type="button" class="bp-btn" data-body-part="Head" aria-pressed="false">Head</button>
               <button type="button" class="bp-btn" data-body-part="Other" aria-pressed="false">Other</button>
             </div>
@@ -1852,7 +1851,7 @@
     const state = {
       x: 108,
       y: 40,
-      body_part: "Right Foot",
+      body_part: "Foot",
       free_kick: false,
       under_pressure: false,
       first_time: false,

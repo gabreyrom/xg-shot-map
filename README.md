@@ -7,7 +7,7 @@ An interactive, single-file expected goals (xG) explorer for soccer. Click or dr
 ## Features
 
 - **Interactive SVG Pitch**: Attacking-half view by default with a toggle for the full pitch, shot-to-goalposts cone, and live distance (meters) and goal-angle (degrees) readouts.
-- **Shot Condition Controls**: Body part (`Right Foot`, `Left Foot`, `Head`, `Other`), `Free kick`, `Under pressure`, `First-time shot`, and `Defenders in cone` (`0–8`).
+- **Shot Condition Controls**: Body part (`Foot`, `Head`, `Other`), `Free kick`, `Under pressure`, `First-time shot`, and `Defenders in cone` (`0–8`).
 - **Live xG Result Card**: 1-decimal percentage + raw `0`–`1` probability, plain-English translation (*"About 1 goal in 5 such shots"*), a **"what changed"** delta line, and inline reliability/free-kick wall notes.
 - **Spatial xG Heatmap**: Toggleable `1.8 m` (`2 yd`) grid across the attacking half that updates dynamically with shot conditions.
 - **Real Shots Layer**: Toggleable overlay of 300 sampled non-penalty shots from `data/xg_shots.csv` (goals in green, misses in rose) with hover readouts comparing Our xG vs StatsBomb xG.
