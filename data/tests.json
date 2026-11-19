@@ -1,0 +1,98 @@
+[
+ {
+  "x": 108,
+  "y": 40,
+  "body_part": "Right Foot",
+  "free_kick": false,
+  "under_pressure": false,
+  "first_time": false,
+  "defenders_in_cone": 0,
+  "expected_distance": 12.0,
+  "expected_angle_rad": 0.6435,
+  "expected_xg": 0.1956
+ },
+ {
+  "x": 108,
+  "y": 40,
+  "body_part": "Right Foot",
+  "free_kick": false,
+  "under_pressure": false,
+  "first_time": false,
+  "defenders_in_cone": 2,
+  "expected_distance": 12.0,
+  "expected_angle_rad": 0.6435,
+  "expected_xg": 0.0961
+ },
+ {
+  "x": 114,
+  "y": 40,
+  "body_part": "Head",
+  "free_kick": false,
+  "under_pressure": true,
+  "first_time": true,
+  "defenders_in_cone": 1,
+  "expected_distance": 6.0,
+  "expected_angle_rad": 1.176,
+  "expected_xg": 0.1588
+ },
+ {
+  "x": 100,
+  "y": 25,
+  "body_part": "Left Foot",
+  "free_kick": false,
+  "under_pressure": false,
+  "first_time": false,
+  "defenders_in_cone": 1,
+  "expected_distance": 25.0,
+  "expected_angle_rad": 0.2569,
+  "expected_xg": 0.0386
+ },
+ {
+  "x": 96,
+  "y": 40,
+  "body_part": "Right Foot",
+  "free_kick": true,
+  "under_pressure": false,
+  "first_time": false,
+  "defenders_in_cone": 0,
+  "expected_distance": 24.0,
+  "expected_angle_rad": 0.3303,
+  "expected_xg": 0.1708
+ },
+ {
+  "x": 118,
+  "y": 37,
+  "body_part": "Right Foot",
+  "free_kick": false,
+  "under_pressure": false,
+  "first_time": true,
+  "defenders_in_cone": 0,
+  "expected_distance": 3.6056,
+  "expected_angle_rad": 1.7561,
+  "expected_xg": 0.7738
+ },
+ {
+  "x": 90,
+  "y": 60,
+  "body_part": "Right Foot",
+  "free_kick": false,
+  "under_pressure": true,
+  "first_time": false,
+  "defenders_in_cone": 3,
+  "expected_distance": 36.0555,
+  "expected_angle_rad": 0.1848,
+  "expected_xg": 0.007
+ },
+ {
+  "x": 119.5,
+  "y": 40,
+  "body_part": "Left Foot",
+  "free_kick": false,
+  "under_pressure": false,
+  "first_time": false,
+  "defenders_in_cone": 0,
+  "expected_distance": 1.0,
+  "expected_angle_rad": 2.8929,
+  "expected_xg": 0.9824
+ }
+]

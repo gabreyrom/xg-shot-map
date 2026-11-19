@@ -1,0 +1,121 @@
+{
+ "note": "Metrics: mean over 5 match-level random 75/25 splits. Calibration: split with seed 0 (n_test=4088 shots, 376 goals). Penalties excluded.",
+ "n_shots_total": 16164,
+ "n_goals_total": 1484,
+ "metrics": {
+  "ours": {
+   "auc": 0.7582,
+   "log_loss": 0.271,
+   "brier": 0.0761,
+   "corr_with_statsbomb": 0.8145
+  },
+  "statsbomb": {
+   "auc": 0.7916,
+   "log_loss": 0.2547,
+   "brier": 0.0711,
+   "corr_with_statsbomb": 1.0
+  }
+ },
+ "calibration": {
+  "ours": [
+   {
+    "bin": 0,
+    "mean_pred": 0.0203,
+    "observed_rate": 0.0235,
+    "n": 511
+   },
+   {
+    "bin": 1,
+    "mean_pred": 0.0325,
+    "observed_rate": 0.0294,
+    "n": 511
+   },
+   {
+    "bin": 2,
+    "mean_pred": 0.0425,
+    "observed_rate": 0.0391,
+    "n": 511
+   },
+   {
+    "bin": 3,
+    "mean_pred": 0.0537,
+    "observed_rate": 0.0568,
+    "n": 511
+   },
+   {
+    "bin": 4,
+    "mean_pred": 0.0678,
+    "observed_rate": 0.0509,
+    "n": 511
+   },
+   {
+    "bin": 5,
+    "mean_pred": 0.0879,
+    "observed_rate": 0.0744,
+    "n": 511
+   },
+   {
+    "bin": 6,
+    "mean_pred": 0.1241,
+    "observed_rate": 0.1624,
+    "n": 511
+   },
+   {
+    "bin": 7,
+    "mean_pred": 0.2752,
+    "observed_rate": 0.2994,
+    "n": 511
+   }
+  ],
+  "statsbomb": [
+   {
+    "bin": 0,
+    "mean_pred": 0.0113,
+    "observed_rate": 0.0235,
+    "n": 511
+   },
+   {
+    "bin": 1,
+    "mean_pred": 0.0236,
+    "observed_rate": 0.0313,
+    "n": 511
+   },
+   {
+    "bin": 2,
+    "mean_pred": 0.0332,
+    "observed_rate": 0.0352,
+    "n": 511
+   },
+   {
+    "bin": 3,
+    "mean_pred": 0.0454,
+    "observed_rate": 0.0254,
+    "n": 511
+   },
+   {
+    "bin": 4,
+    "mean_pred": 0.0614,
+    "observed_rate": 0.0489,
+    "n": 511
+   },
+   {
+    "bin": 5,
+    "mean_pred": 0.0838,
+    "observed_rate": 0.0705,
+    "n": 511
+   },
+   {
+    "bin": 6,
+    "mean_pred": 0.1296,
+    "observed_rate": 0.135,
+    "n": 511
+   },
+   {
+    "bin": 7,
+    "mean_pred": 0.3313,
+    "observed_rate": 0.3659,
+    "n": 511
+   }
+  ]
+ }
+}

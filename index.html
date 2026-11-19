@@ -1,0 +1,2666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soccer xG Shot Map</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-elevated: #1e293b;
+      --bg-card: #162033;
+      --border: rgba(148, 163, 184, 0.18);
+      --border-strong: rgba(148, 163, 184, 0.34);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.14);
+      --gold: #f59e0b;
+      --gold-soft: rgba(245, 158, 11, 0.16);
+      --green: #22c55e;
+      --green-soft: rgba(34, 197, 94, 0.14);
+      --red: #ef4444;
+      --red-soft: rgba(239, 68, 68, 0.15);
+      --radius: 14px;
+      --radius-sm: 9px;
+      --shadow: 0 12px 32px rgba(2, 6, 23, 0.38);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at top left, #17253d 0%, var(--bg) 52%);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.45;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 20px 20px 32px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px 16px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .test-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .test-badge:hover {
+      border-color: var(--border-strong);
+      background: var(--bg-elevated);
+    }
+
+    .test-badge.pass {
+      border-color: rgba(34, 197, 94, 0.4);
+      background: var(--green-soft);
+      color: #86efac;
+    }
+
+    .test-badge.fail {
+      border-color: rgba(239, 68, 68, 0.45);
+      background: var(--red-soft);
+      color: #fca5a5;
+    }
+
+    .test-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Self-test drawer */
+    .test-drawer {
+      margin-bottom: 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      overflow-x: auto;
+    }
+
+    .test-drawer[hidden] {
+      display: none;
+    }
+
+    .test-drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .test-drawer-head h2 {
+      margin: 0;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .test-drawer-head span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .test-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+
+    .test-table th,
+    .test-table td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .test-table th {
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .test-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-ok {
+      color: #86efac;
+      font-weight: 700;
+    }
+
+    .status-err {
+      color: #fca5a5;
+      font-weight: 700;
+    }
+
+    /* Main Workspace Grid */
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.38fr) minmax(310px, 390px);
+      gap: 18px;
+      align-items: start;
+      flex: 1;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    /* Pitch Card */
+    .pitch-card {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pitch-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .toolbar-left {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .heatmap-btn {
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: #0b1220;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .heatmap-btn:hover {
+      border-color: var(--border-strong);
+      color: var(--text);
+    }
+
+    .heatmap-btn.active {
+      background: rgba(249, 115, 22, 0.18);
+      border-color: rgba(249, 115, 22, 0.72);
+      color: #fed7aa;
+    }
+
+    .heatmap-btn .hm-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #22c55e 0%, #facc15 50%, #ef4444 100%);
+      opacity: 0.65;
+    }
+
+    .heatmap-btn.active .hm-dot {
+      opacity: 1;
+      box-shadow: 0 0 8px rgba(249, 115, 22, 0.8);
+    }
+
+    .realshots-btn {
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: #0b1220;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .realshots-btn:hover {
+      border-color: var(--border-strong);
+      color: var(--text);
+    }
+
+    .realshots-btn.active {
+      background: rgba(34, 197, 94, 0.16);
+      border-color: rgba(34, 197, 94, 0.65);
+      color: #bbf7d0;
+    }
+
+    .realshots-btn .rs-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: inset 0 0 0 2px rgba(244, 63, 94, 0.7);
+      opacity: 0.7;
+    }
+
+    .realshots-btn.active .rs-dot {
+      opacity: 1;
+      box-shadow: 0 0 7px rgba(34, 197, 94, 0.75);
+    }
+
+    .real-shots-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.62);
+      border: 1px solid var(--border);
+      font-size: 0.77rem;
+      color: var(--text-muted);
+    }
+
+    .real-shots-bar[hidden] {
+      display: none;
+    }
+
+    .rs-legend {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      white-space: nowrap;
+    }
+
+    .rs-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+
+    .rs-swatch {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .rs-swatch.goal {
+      background: #22c55e;
+      border: 1px solid #052e16;
+    }
+
+    .rs-swatch.miss {
+      background: rgba(244, 63, 94, 0.75);
+      border: 1px solid #4c0519;
+    }
+
+    .rs-tooltip {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: #e2e8f0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rs-tag-goal {
+      color: #86efac;
+      font-weight: 700;
+    }
+
+    .rs-tag-miss {
+      color: #fda4af;
+      font-weight: 700;
+    }
+
+    .real-shot-dot {
+      cursor: pointer;
+    }
+
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .heatmap-legend[hidden] {
+      display: none;
+    }
+
+    .hm-scale {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      max-width: 340px;
+    }
+
+    .hm-bar {
+      flex: 1;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        rgba(14, 116, 144, 0.4) 0%,
+        rgba(34, 197, 94, 0.7) 30%,
+        rgba(250, 204, 21, 0.85) 60%,
+        rgba(249, 115, 22, 0.92) 82%,
+        rgba(239, 68, 68, 0.95) 100%
+      );
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    .hm-ticks {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: #cbd5e1;
+      white-space: nowrap;
+    }
+
+    .segmented {
+      display: inline-flex;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .segmented button {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 6px 11px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .segmented button:hover {
+      color: var(--text);
+    }
+
+    .segmented button.active {
+      background: var(--accent);
+      color: #082f49;
+    }
+
+    .pitch-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .coord-pill {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--text);
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .pitch-stage {
+      width: 100%;
+      background: #0d3a22;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #pitch-svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 600px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    #pitch-svg.dragging {
+      cursor: grabbing;
+    }
+
+    /* Side Panel */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Result Card */
+    .result-card {
+      padding: 18px;
+      background: linear-gradient(160deg, #1b2a44 0%, #141f33 100%);
+    }
+
+    .result-kicker {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .xg-headline {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .xg-pct {
+      font-size: 2.7rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      font-variant-numeric: tabular-nums;
+      color: #ffffff;
+    }
+
+    .xg-raw {
+      font-family: var(--font-mono);
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid var(--border);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .xg-bar-track {
+      margin: 12px 0 10px;
+      height: 8px;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.7);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    .xg-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #38bdf8 0%, #22c55e 55%, #f59e0b 100%);
+      transition: width 0.12s ease-out;
+    }
+
+    .xg-plain {
+      margin: 0;
+      font-size: 0.94rem;
+      color: #e2e8f0;
+      font-weight: 500;
+    }
+
+    .what-changed {
+      margin-top: 8px;
+      padding: 6px 9px;
+      border-radius: 7px;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid var(--border);
+      font-size: 0.79rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .what-changed.up {
+      border-color: rgba(34, 197, 94, 0.35);
+      background: rgba(34, 197, 94, 0.09);
+      color: #bbf7d0;
+    }
+
+    .what-changed.down {
+      border-color: rgba(239, 68, 68, 0.35);
+      background: rgba(239, 68, 68, 0.09);
+      color: #fecaca;
+    }
+
+    .what-changed strong {
+      font-family: var(--font-mono);
+      font-weight: 700;
+    }
+
+    .reliability-note {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--gold-soft);
+      border: 1px solid rgba(245, 158, 11, 0.42);
+      color: #fde68a;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      line-height: 1.35;
+    }
+
+    .reliability-note[hidden] {
+      display: none;
+    }
+
+    .reliability-note strong {
+      color: #fef3c7;
+    }
+
+    .fk-wall-note {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.38);
+      color: #bae6fd;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      line-height: 1.35;
+    }
+
+    .fk-wall-note[hidden] {
+      display: none;
+    }
+
+    .geometry-row {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .geo-item {
+      background: rgba(15, 23, 42, 0.48);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    .geo-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .geo-value {
+      margin-top: 2px;
+      font-size: 1.02rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+
+    /* Controls Card */
+    .controls-card {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .controls-card h2 {
+      margin: 0;
+      font-size: 0.96rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .body-part-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 7px;
+    }
+
+    .bp-btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.55);
+      color: #cbd5e1;
+      font-family: inherit;
+      font-size: 0.84rem;
+      font-weight: 600;
+      padding: 9px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .bp-btn:hover {
+      border-color: var(--border-strong);
+      color: var(--text);
+    }
+
+    .bp-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #e0f2fe;
+      box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.35);
+    }
+
+    /* Toggle rows */
+    .toggle-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 11px;
+      border-radius: var(--radius-sm);
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: border-color 0.14s ease;
+    }
+
+    .toggle-row:hover {
+      border-color: var(--border-strong);
+    }
+
+    .toggle-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .toggle-title {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .toggle-sub {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+    }
+
+    .switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: #334155;
+      border-radius: 999px;
+      transition: background 0.16s ease;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: #f8fafc;
+      border-radius: 50%;
+      transition: transform 0.16s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    }
+
+    .switch input:checked + .slider {
+      background: var(--accent);
+    }
+
+    .switch input:checked + .slider::before {
+      transform: translateX(18px);
+    }
+
+    .switch input:focus-visible + .slider {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* Stepper */
+    .stepper-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 11px;
+      border-radius: var(--radius-sm);
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid var(--border);
+    }
+
+    .stepper-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elevated);
+      color: var(--text);
+      font-size: 1.1rem;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.14s ease, border-color 0.14s ease;
+    }
+
+    .step-btn:hover:not(:disabled) {
+      background: #2b3c57;
+      border-color: var(--accent);
+    }
+
+    .step-btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+
+    .step-value {
+      min-width: 26px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 1.02rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 24px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    /* Navigation Tabs */
+    .tab-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    .tab-btn {
+      appearance: none;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 8px 15px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      background: rgba(148, 163, 184, 0.08);
+    }
+
+    .tab-btn.active {
+      background: var(--accent-soft);
+      border-color: rgba(56, 189, 248, 0.42);
+      color: #e0f2fe;
+    }
+
+    .tab-panel[hidden] {
+      display: none !important;
+    }
+
+    /* Comparison Tab */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.25fr);
+      gap: 18px;
+      align-items: start;
+      flex: 1;
+    }
+
+    .comp-card {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .comp-card-head h2 {
+      margin: 0;
+      font-size: 1.04rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .comp-card-head p {
+      margin: 4px 0 0;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .comp-summary-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .summary-pill {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      padding: 4px 9px;
+      border-radius: 6px;
+    }
+
+    .metrics-table-wrap {
+      overflow-x: auto;
+    }
+
+    .metrics-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+
+    .metrics-table th,
+    .metrics-table td {
+      padding: 10px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .metrics-table th {
+      color: var(--text-muted);
+      font-size: 0.73rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metrics-table td.num,
+    .metrics-table th.num {
+      text-align: right;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metrics-table td.metric-name {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .metrics-table td.metric-dir {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .metrics-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .col-ours {
+      color: #7dd3fc;
+      font-weight: 700;
+    }
+
+    .col-sb {
+      color: #fcd34d;
+      font-weight: 700;
+    }
+
+    .comp-note {
+      margin: 0;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .legend-swatch {
+      width: 18px;
+      height: 3px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .legend-swatch.ours {
+      background: #38bdf8;
+    }
+
+    .legend-swatch.sb {
+      background: #f59e0b;
+    }
+
+    .legend-swatch.diag {
+      background: repeating-linear-gradient(
+        90deg,
+        #94a3b8 0px,
+        #94a3b8 5px,
+        transparent 5px,
+        transparent 9px
+      );
+      height: 2px;
+    }
+
+    .cal-chart-wrap {
+      position: relative;
+      width: 100%;
+      background: rgba(11, 18, 32, 0.72);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    #calibration-svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .cal-point {
+      cursor: pointer;
+      transition: r 0.12s ease;
+    }
+
+    .cal-tooltip {
+      margin-top: 8px;
+      min-height: 28px;
+      padding: 6px 10px;
+      border-radius: 7px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+    }
+
+    /* About Tab */
+    .about-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr);
+      gap: 18px;
+      align-items: start;
+      flex: 1;
+    }
+
+    .about-card {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .about-card h2 {
+      margin: 0;
+      font-size: 1.04rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .about-list {
+      margin: 0;
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .about-list li strong {
+      color: #ffffff;
+    }
+
+    .about-subcard {
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border);
+      font-size: 0.86rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .about-subcard h3 {
+      margin: 0 0 6px;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+
+    .about-subcard p {
+      margin: 0;
+    }
+
+    .about-subcard a {
+      color: #7dd3fc;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .limitations-list {
+      margin: 0;
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      color: #fde68a;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .limitations-box {
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: var(--gold-soft);
+      border: 1px solid rgba(245, 158, 11, 0.36);
+    }
+
+    /* Responsive */
+    @media (max-width: 820px) {
+      .app {
+        padding: 14px 14px 24px;
+      }
+
+      .workspace,
+      .comparison-grid,
+      .about-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tab-bar {
+        gap: 4px;
+      }
+
+      .tab-btn {
+        flex: 1;
+        text-align: center;
+        padding: 8px 10px;
+        font-size: 0.86rem;
+      }
+
+      .xg-pct {
+        font-size: 2.3rem;
+      }
+
+      .pitch-hint-text {
+        display: none;
+      }
+
+      .heatmap-legend {
+        flex-wrap: wrap;
+        gap: 6px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <h1>Soccer xG Shot Map</h1>
+        <p>Click or drag anywhere on the pitch to estimate expected goals (xG)</p>
+      </div>
+      <button id="test-badge" class="test-badge" type="button" aria-expanded="false" aria-controls="test-drawer">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="test-badge-text">Running self-test...</span>
+      </button>
+    </header>
+
+    <section id="test-drawer" class="test-drawer" hidden aria-label="Model self-test details">
+      <div class="test-drawer-head">
+        <h2>Golden Self-Test Results (<code>tests.json</code>)</h2>
+        <span>Tolerance: &plusmn;0.001 for distance, angle (rad), and xG</span>
+      </div>
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Spot (x, y)</th>
+            <th>Context</th>
+            <th>Dist yd (exp / got)</th>
+            <th>Angle rad (exp / got)</th>
+            <th>xG (exp / got)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="test-table-body"></tbody>
+      </table>
+    </section>
+
+    <nav class="tab-bar" role="tablist" aria-label="App sections">
+      <button id="tab-shotmap" class="tab-btn active" type="button" role="tab" aria-selected="true" aria-controls="panel-shotmap" data-tab="shotmap">Shot Map</button>
+      <button id="tab-comparison" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="panel-comparison" data-tab="comparison">Comparison</button>
+      <button id="tab-about" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="panel-about" data-tab="about">About</button>
+    </nav>
+
+    <main id="panel-shotmap" class="workspace tab-panel" role="tabpanel" aria-labelledby="tab-shotmap">
+      <!-- Pitch Card -->
+      <section class="card pitch-card" aria-label="Interactive soccer pitch">
+        <div class="pitch-toolbar">
+          <div class="toolbar-left">
+            <div class="segmented" role="group" aria-label="Pitch view">
+              <button id="view-half" type="button" class="active" aria-pressed="true">Attacking Half</button>
+              <button id="view-full" type="button" aria-pressed="false">Full Pitch</button>
+            </div>
+            <button id="toggle-heatmap" class="heatmap-btn" type="button" aria-pressed="false">
+              <span class="hm-dot" aria-hidden="true"></span>
+              <span>Heatmap</span>
+            </button>
+            <button id="toggle-realshots" class="realshots-btn" type="button" aria-pressed="false">
+              <span class="rs-dot" aria-hidden="true"></span>
+              <span>Real Shots</span>
+            </button>
+          </div>
+          <div class="pitch-hint">
+            <span class="pitch-hint-text">Click or drag to move shot</span>
+            <span id="coord-pill" class="coord-pill">x: 98.8 m, y: 36.6 m</span>
+          </div>
+        </div>
+
+        <div class="pitch-stage">
+          <svg id="pitch-svg" viewBox="57 -3 68 86" role="img" aria-label="Soccer pitch shot map">
+            <defs>
+              <clipPath id="pitch-clip">
+                <rect x="0" y="0" width="120" height="80" />
+              </clipPath>
+              <linearGradient id="cone-grad" x1="0%" y1="50%" x2="100%" y2="50%">
+                <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.34" />
+                <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.14" />
+              </linearGradient>
+              <pattern id="goal-net" width="1.2" height="1.2" patternUnits="userSpaceOnUse">
+                <path d="M 1.2 0 L 0 0 0 1.2" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="0.16" />
+              </pattern>
+            </defs>
+
+            <!-- Outer turf apron -->
+            <rect x="-6" y="-5" width="132" height="90" fill="#14532d" />
+
+            <!-- Mowed grass stripes inside pitch -->
+            <g clip-path="url(#pitch-clip)">
+              <rect x="0" y="0" width="120" height="80" fill="#166534" />
+              <g fill="#19733b">
+                <rect x="0" y="0" width="6" height="80" />
+                <rect x="12" y="0" width="6" height="80" />
+                <rect x="24" y="0" width="6" height="80" />
+                <rect x="36" y="0" width="6" height="80" />
+                <rect x="48" y="0" width="6" height="80" />
+                <rect x="60" y="0" width="6" height="80" />
+                <rect x="72" y="0" width="6" height="80" />
+                <rect x="84" y="0" width="6" height="80" />
+                <rect x="96" y="0" width="6" height="80" />
+                <rect x="108" y="0" width="6" height="80" />
+              </g>
+            </g>
+
+            <!-- xG Heatmap layer (2-yard grid over attacking half) -->
+            <g id="heatmap-layer" clip-path="url(#pitch-clip)" style="display:none;"></g>
+
+            <!-- Pitch markings (StatsBomb 120 x 80) -->
+            <g fill="none" stroke="rgba(255,255,255,0.88)" stroke-width="0.42" stroke-linecap="round" stroke-linejoin="round">
+              <!-- Outer boundary -->
+              <rect x="0" y="0" width="120" height="80" />
+              <!-- Halfway line & center circle -->
+              <line x1="60" y1="0" x2="60" y2="80" />
+              <circle cx="60" cy="40" r="10" />
+              <circle cx="60" cy="40" r="0.5" fill="rgba(255,255,255,0.9)" stroke="none" />
+
+              <!-- Defending half (left, x = 0) -->
+              <rect x="0" y="18" width="18" height="44" />
+              <rect x="0" y="30" width="6" height="20" />
+              <circle cx="12" cy="40" r="0.48" fill="rgba(255,255,255,0.9)" stroke="none" />
+              <path d="M 18 32 A 10 10 0 0 1 18 48" />
+              <!-- Defending goal -->
+              <rect x="-2.4" y="36" width="2.4" height="8" fill="url(#goal-net)" stroke="rgba(255,255,255,0.65)" stroke-width="0.35" />
+
+              <!-- Attacking half (right, x = 120) -->
+              <rect x="102" y="18" width="18" height="44" />
+              <rect x="114" y="30" width="6" height="20" />
+              <circle cx="108" cy="40" r="0.48" fill="rgba(255,255,255,0.9)" stroke="none" />
+              <path d="M 102 32 A 10 10 0 0 0 102 48" />
+
+              <!-- Corner arcs (radius 1) -->
+              <path d="M 1 0 A 1 1 0 0 1 0 1" />
+              <path d="M 0 79 A 1 1 0 0 1 1 80" />
+              <path d="M 119 0 A 1 1 0 0 0 120 1" />
+              <path d="M 120 79 A 1 1 0 0 0 119 80" />
+
+              <!-- Attacking goal net & posts (y = 36 to 44) -->
+              <rect x="120" y="36" width="2.5" height="8" fill="url(#goal-net)" stroke="#ffffff" stroke-width="0.45" />
+            </g>
+
+            <!-- Highlighted attacking goal posts -->
+            <circle cx="120" cy="36" r="0.55" fill="#ffffff" />
+            <circle cx="120" cy="44" r="0.55" fill="#ffffff" />
+
+            <!-- Sampled real shots layer (300 shots from xg_shots.csv) -->
+            <g id="real-shots-layer" clip-path="url(#pitch-clip)" style="display:none;"></g>
+
+            <!-- Dynamic shot-to-goal cone & marker -->
+            <g id="shot-overlay">
+              <polygon id="shot-cone" points="108,40 120,36 120,44" fill="url(#cone-grad)" stroke="#fbbf24" stroke-width="0.32" stroke-linejoin="round" />
+              <line id="shot-dist-line" x1="108" y1="40" x2="120" y2="40" stroke="rgba(255,255,255,0.55)" stroke-width="0.28" stroke-dasharray="1.1 0.9" />
+
+              <!-- Shot point -->
+              <circle id="shot-halo" cx="108" cy="40" r="2.2" fill="rgba(245, 158, 11, 0.25)" stroke="#fbbf24" stroke-width="0.32" />
+              <circle id="shot-dot" cx="108" cy="40" r="1.05" fill="#fbbf24" stroke="#0f172a" stroke-width="0.35" />
+
+              <!-- Live floating label -->
+              <g id="shot-label-group" transform="translate(86, 33.5)">
+                <rect id="shot-label-bg" x="0" y="0" width="24" height="5.2" rx="1.2" fill="rgba(15, 23, 42, 0.9)" stroke="rgba(251, 191, 36, 0.65)" stroke-width="0.28" />
+                <text id="shot-label-text" x="12" y="3.5" text-anchor="middle" fill="#f8fafc" font-size="2.55" font-weight="600" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">11.0 m · 36.9°</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <div id="heatmap-legend" class="heatmap-legend" hidden aria-label="Heatmap xG color scale">
+          <span class="hm-ticks">0%</span>
+          <div class="hm-scale">
+            <div class="hm-bar" aria-hidden="true"></div>
+          </div>
+          <span class="hm-ticks">70%+ xG &middot; 1.8 m grid</span>
+        </div>
+
+        <div id="real-shots-bar" class="real-shots-bar" hidden aria-label="Real shots legend and hover details">
+          <div class="rs-legend">
+            <span class="rs-legend-item"><span class="rs-swatch goal" aria-hidden="true"></span><span id="rs-goal-count">Goal (30)</span></span>
+            <span class="rs-legend-item"><span class="rs-swatch miss" aria-hidden="true"></span><span id="rs-miss-count">Miss (270)</span></span>
+          </div>
+          <div id="real-shot-tooltip" class="rs-tooltip">Hover a shot dot to compare Our xG vs StatsBomb xG.</div>
+        </div>
+      </section>
+
+      <!-- Right Column: Result + Controls -->
+      <aside class="side-panel">
+        <!-- Result Card -->
+        <section class="card result-card" aria-live="polite" aria-label="Expected goals result">
+          <div class="result-kicker">Expected Goals (xG)</div>
+          <div class="xg-headline">
+            <div id="xg-pct" class="xg-pct">19.6%</div>
+            <div id="xg-raw" class="xg-raw" title="Raw probability (0 to 1)">0.1956 xG</div>
+          </div>
+
+          <div class="xg-bar-track" aria-hidden="true">
+            <div id="xg-bar-fill" class="xg-bar-fill"></div>
+          </div>
+
+          <p id="xg-plain" class="xg-plain">About 1 goal in 5 such shots</p>
+
+          <div id="what-changed" class="what-changed">Click another spot or adjust a condition to compare xG.</div>
+
+          <div id="reliability-note" class="reliability-note" hidden role="status">
+            <span aria-hidden="true">&#9888;</span>
+            <span id="reliability-text"><strong>Less reliable estimate</strong></span>
+          </div>
+
+          <div id="fk-wall-note" class="fk-wall-note" hidden role="status">
+            <span aria-hidden="true">&#9432;</span>
+            <span>Walls are not counted automatically. Set Defenders in cone to about 4 for a wall.</span>
+          </div>
+
+          <div class="geometry-row">
+            <div class="geo-item">
+              <div class="geo-label">Distance</div>
+              <div id="geo-distance" class="geo-value">11.0 m</div>
+            </div>
+            <div class="geo-item">
+              <div class="geo-label">Goal Angle</div>
+              <div id="geo-angle" class="geo-value">36.9&deg;</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Controls Card -->
+        <section class="card controls-card" aria-label="Shot conditions">
+          <h2>Shot Conditions</h2>
+
+          <div class="control-group">
+            <div class="control-label">
+              <span>Body part</span>
+            </div>
+            <div class="body-part-grid" role="group" aria-label="Body part">
+              <button type="button" class="bp-btn active" data-body-part="Right Foot" aria-pressed="true">Right Foot</button>
+              <button type="button" class="bp-btn" data-body-part="Left Foot" aria-pressed="false">Left Foot</button>
+              <button type="button" class="bp-btn" data-body-part="Head" aria-pressed="false">Head</button>
+              <button type="button" class="bp-btn" data-body-part="Other" aria-pressed="false">Other</button>
+            </div>
+          </div>
+
+          <div class="toggle-list">
+            <label class="toggle-row" for="toggle-fk">
+              <span class="toggle-text">
+                <span class="toggle-title">Free kick</span>
+                <span class="toggle-sub">Direct shot from a dead ball</span>
+              </span>
+              <span class="switch">
+                <input id="toggle-fk" type="checkbox" />
+                <span class="slider"></span>
+              </span>
+            </label>
+
+            <label class="toggle-row" for="toggle-pressure">
+              <span class="toggle-text">
+                <span class="toggle-title">Under pressure</span>
+                <span class="toggle-sub">Defender actively pressing shooter</span>
+              </span>
+              <span class="switch">
+                <input id="toggle-pressure" type="checkbox" />
+                <span class="slider"></span>
+              </span>
+            </label>
+
+            <label class="toggle-row" for="toggle-first-time">
+              <span class="toggle-text">
+                <span class="toggle-title">First-time shot</span>
+                <span class="toggle-sub">Struck without a controlling touch</span>
+              </span>
+              <span class="switch">
+                <input id="toggle-first-time" type="checkbox" />
+                <span class="slider"></span>
+              </span>
+            </label>
+          </div>
+
+          <div class="stepper-row">
+            <div class="toggle-text">
+              <span class="toggle-title">Defenders in cone</span>
+              <span class="toggle-sub">Between shooter and goal posts (0&ndash;8)</span>
+            </div>
+            <div class="stepper-controls">
+              <button id="cone-dec" class="step-btn" type="button" aria-label="Decrease defenders in cone">&minus;</button>
+              <span id="cone-val" class="step-value" aria-live="polite">0</span>
+              <button id="cone-inc" class="step-btn" type="button" aria-label="Increase defenders in cone">+</button>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <!-- Comparison Tab Panel -->
+    <section id="panel-comparison" class="comparison-grid tab-panel" role="tabpanel" aria-labelledby="tab-comparison" hidden>
+      <article class="card comp-card">
+        <div class="comp-card-head">
+          <h2>Model Metrics: Ours vs StatsBomb xG</h2>
+          <p>Evaluated out-of-sample on non-penalty shots</p>
+        </div>
+
+        <div id="comp-summary-pills" class="comp-summary-pills"></div>
+
+        <div class="metrics-table-wrap">
+          <table class="metrics-table" aria-label="Model performance comparison">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th class="num">Our Model</th>
+                <th class="num">StatsBomb xG</th>
+                <th>Better</th>
+              </tr>
+            </thead>
+            <tbody id="metrics-table-body"></tbody>
+          </table>
+        </div>
+
+        <p id="comp-note" class="comp-note"></p>
+      </article>
+
+      <article class="card comp-card">
+        <div class="comp-card-head">
+          <h2>Calibration Chart</h2>
+          <p>Predicted mean xG vs observed goal rate across 8 equal-size bins</p>
+        </div>
+
+        <div class="chart-legend" aria-label="Chart legend">
+          <span class="legend-item"><span class="legend-swatch ours"></span>Our Model</span>
+          <span class="legend-item"><span class="legend-swatch sb"></span>StatsBomb xG</span>
+          <span class="legend-item"><span class="legend-swatch diag"></span>Perfect calibration (y = x)</span>
+        </div>
+
+        <div class="cal-chart-wrap">
+          <svg id="calibration-svg" viewBox="0 0 540 410" role="img" aria-label="Calibration chart comparing predicted vs observed goal rate for Our Model and StatsBomb xG"></svg>
+          <div id="cal-tooltip" class="cal-tooltip">Hover or tap any bin point to see exact predicted vs observed values.</div>
+        </div>
+      </article>
+    </section>
+
+    <!-- About Tab Panel -->
+    <section id="panel-about" class="about-grid tab-panel" role="tabpanel" aria-labelledby="tab-about" hidden>
+      <article class="card about-card">
+        <h2>How the Model Works</h2>
+        <ul class="about-list">
+          <li><strong>Distance &amp; angle drive the baseline:</strong> Every shot is scored by how far it is from the center of the goal (on a log scale so extra meters close to goal matter most) and how wide the open angle is between the two goal posts.</li>
+          <li><strong>Body part shifts the odds:</strong> Right-foot and left-foot shots share the same baseline, while headers and other body parts (knee, chest, etc.) have lower expected goals from the exact same spot.</li>
+          <li><strong>Match context adjusts the estimate:</strong> Being under defensive pressure lowers xG, and direct free kicks use a separate dead-ball adjustment. First-time strikes have almost no effect in this model.</li>
+          <li><strong>Traffic in front of goal blocks shots:</strong> Each defender positioned inside the shooting triangle from the ball to the two goal posts reduces the probability of scoring.</li>
+          <li><strong>Logistic regression turns inputs into a probability:</strong> The model adds up the weighted score of all 8 features and passes it through a sigmoid function to produce a probability between 0% and 100% (penalties are not modeled).</li>
+        </ul>
+      </article>
+
+      <div class="side-panel">
+        <article class="card about-card">
+          <h2>Data Source</h2>
+          <div class="about-subcard">
+            <h3>StatsBomb Open Data</h3>
+            <p>
+              Fitted on <strong>16,164 non-penalty shots</strong> (1,484 goals) from
+              <a href="https://github.com/statsbomb/open-data" target="_blank" rel="noopener noreferrer">StatsBomb Open Data</a>
+              covering major international tournaments and one Premier League season. The logistic regression model was fitted by the author using StatsBomb's 120 &times; 80 yard coordinate system internally, while distances on screen are displayed in meters (1 yd = 0.9144 m).
+            </p>
+          </div>
+        </article>
+
+        <article class="card about-card">
+          <h2>Known Limitations</h2>
+          <div class="limitations-box">
+            <ul class="limitations-list">
+              <li>Trained on 16,164 shots from major tournaments and one Premier League season, so it reflects those matches only.</li>
+              <li>No goalkeeper position, no shot speed, no assist type. StatsBomb's own xG uses more context and scores better (AUC about 0.79 vs 0.76).</li>
+              <li>Free kicks, and shots from within about 2 yards (1.8 m), are the least reliable estimates.</li>
+              <li>Free-kick xG is overstated unless you set Defenders in cone to about 4 for the wall.</li>
+              <li>Defender count is entered by hand here, while in the data it comes from the freeze frame.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>Data: StatsBomb Open Data (github.com/statsbomb/open-data). Model: logistic regression fitted by the author.</div>
+      <div style="margin-top: 4px; font-size: 0.75rem; color: var(--text-dim);">Distances shown in meters (1 yd = 0.9144 m). The model uses StatsBomb coordinates in yards internally.</div>
+    </footer>
+  </div>
+
+  <script>
+    "use strict";
+
+    // Embedded model coefficients from data/xg_model.json
+    const MODEL = {
+      features: ["logd", "angle", "head", "foot_other", "fk", "under_pressure", "first_time", "cone"],
+      coef: [
+        -1.4780098250009805,
+        0.783247693086004,
+        -0.963324798661775,
+        -0.9714940622359957,
+        1.1041471731904897,
+        -0.3135127650172882,
+        -0.004381821919605681,
+        -0.4134227945225479
+      ],
+      intercept: 1.7544948916511736,
+      n_shots: 16164
+    };
+
+    // Embedded golden test cases from data/tests.json
+    const GOLDEN_TESTS = [
+      {
+        x: 108,
+        y: 40,
+        body_part: "Right Foot",
+        free_kick: false,
+        under_pressure: false,
+        first_time: false,
+        defenders_in_cone: 0,
+        expected_distance: 12.0,
+        expected_angle_rad: 0.6435,
+        expected_xg: 0.1956
+      },
+      {
+        x: 108,
+        y: 40,
+        body_part: "Right Foot",
+        free_kick: false,
+        under_pressure: false,
+        first_time: false,
+        defenders_in_cone: 2,
+        expected_distance: 12.0,
+        expected_angle_rad: 0.6435,
+        expected_xg: 0.0961
+      },
+      {
+        x: 114,
+        y: 40,
+        body_part: "Head",
+        free_kick: false,
+        under_pressure: true,
+        first_time: true,
+        defenders_in_cone: 1,
+        expected_distance: 6.0,
+        expected_angle_rad: 1.176,
+        expected_xg: 0.1588
+      },
+      {
+        x: 100,
+        y: 25,
+        body_part: "Left Foot",
+        free_kick: false,
+        under_pressure: false,
+        first_time: false,
+        defenders_in_cone: 1,
+        expected_distance: 25.0,
+        expected_angle_rad: 0.2569,
+        expected_xg: 0.0386
+      },
+      {
+        x: 96,
+        y: 40,
+        body_part: "Right Foot",
+        free_kick: true,
+        under_pressure: false,
+        first_time: false,
+        defenders_in_cone: 0,
+        expected_distance: 24.0,
+        expected_angle_rad: 0.3303,
+        expected_xg: 0.1708
+      },
+      {
+        x: 118,
+        y: 37,
+        body_part: "Right Foot",
+        free_kick: false,
+        under_pressure: false,
+        first_time: true,
+        defenders_in_cone: 0,
+        expected_distance: 3.6056,
+        expected_angle_rad: 1.7561,
+        expected_xg: 0.7738
+      },
+      {
+        x: 90,
+        y: 60,
+        body_part: "Right Foot",
+        free_kick: false,
+        under_pressure: true,
+        first_time: false,
+        defenders_in_cone: 3,
+        expected_distance: 36.0555,
+        expected_angle_rad: 0.1848,
+        expected_xg: 0.007
+      },
+      {
+        x: 119.5,
+        y: 40,
+        body_part: "Left Foot",
+        free_kick: false,
+        under_pressure: false,
+        first_time: false,
+        defenders_in_cone: 0,
+        expected_distance: 1.0,
+        expected_angle_rad: 2.8929,
+        expected_xg: 0.9824
+      }
+    ];
+
+    // Embedded comparison metrics and calibration bins from data/comparison.json
+    const COMPARISON = {
+      note: "Metrics: mean over 5 match-level random 75/25 splits. Calibration: split with seed 0 (n_test=4088 shots, 376 goals). Penalties excluded.",
+      n_shots_total: 16164,
+      n_goals_total: 1484,
+      metrics: {
+        ours: {
+          auc: 0.7582,
+          log_loss: 0.271,
+          brier: 0.0761,
+          corr_with_statsbomb: 0.8145
+        },
+        statsbomb: {
+          auc: 0.7916,
+          log_loss: 0.2547,
+          brier: 0.0711,
+          corr_with_statsbomb: 1.0
+        }
+      },
+      calibration: {
+        ours: [
+          { bin: 0, mean_pred: 0.0203, observed_rate: 0.0235, n: 511 },
+          { bin: 1, mean_pred: 0.0325, observed_rate: 0.0294, n: 511 },
+          { bin: 2, mean_pred: 0.0425, observed_rate: 0.0391, n: 511 },
+          { bin: 3, mean_pred: 0.0537, observed_rate: 0.0568, n: 511 },
+          { bin: 4, mean_pred: 0.0678, observed_rate: 0.0509, n: 511 },
+          { bin: 5, mean_pred: 0.0879, observed_rate: 0.0744, n: 511 },
+          { bin: 6, mean_pred: 0.1241, observed_rate: 0.1624, n: 511 },
+          { bin: 7, mean_pred: 0.2752, observed_rate: 0.2994, n: 511 }
+        ],
+        statsbomb: [
+          { bin: 0, mean_pred: 0.0113, observed_rate: 0.0235, n: 511 },
+          { bin: 1, mean_pred: 0.0236, observed_rate: 0.0313, n: 511 },
+          { bin: 2, mean_pred: 0.0332, observed_rate: 0.0352, n: 511 },
+          { bin: 3, mean_pred: 0.0454, observed_rate: 0.0254, n: 511 },
+          { bin: 4, mean_pred: 0.0614, observed_rate: 0.0489, n: 511 },
+          { bin: 5, mean_pred: 0.0838, observed_rate: 0.0705, n: 511 },
+          { bin: 6, mean_pred: 0.1296, observed_rate: 0.135, n: 511 },
+          { bin: 7, mean_pred: 0.3313, observed_rate: 0.3659, n: 511 }
+        ]
+      }
+    };
+
+    /**
+     * Pure xG logistic regression calculation matching BRIEF.md and data/tests.json.
+     */
+    function computeShotXG({
+      x,
+      y,
+      body_part,
+      free_kick,
+      under_pressure,
+      first_time,
+      defenders_in_cone
+    }) {
+      const dx = Math.max(120 - x, 0);
+      const dy = Math.abs(y - 40);
+      const rawDistance = Math.hypot(dx, dy);
+      const distance = Math.max(rawDistance, 1);
+      const logd = Math.log(distance);
+      const angle = Math.abs(Math.atan2(44 - y, dx) - Math.atan2(36 - y, dx));
+
+      const featureMap = {
+        logd,
+        angle,
+        head: body_part === "Head" ? 1 : 0,
+        foot_other: body_part === "Other" ? 1 : 0,
+        fk: free_kick ? 1 : 0,
+        under_pressure: under_pressure ? 1 : 0,
+        first_time: first_time ? 1 : 0,
+        cone: Number(defenders_in_cone) || 0
+      };
+
+      let z = MODEL.intercept;
+      for (let i = 0; i < MODEL.features.length; i++) {
+        z += MODEL.coef[i] * featureMap[MODEL.features[i]];
+      }
+      const xg = 1 / (1 + Math.exp(-z));
+
+      return {
+        rawDistance,
+        distance,
+        angle,
+        angleDeg: (angle * 180) / Math.PI,
+        z,
+        xg
+      };
+    }
+
+    function formatPlainEnglish(xg) {
+      if (xg >= 0.95) {
+        return `Almost certain (about ${Math.round(xg * 100)} goals in 100 such shots)`;
+      }
+      if (xg >= 0.5) {
+        return `About ${Math.round(xg * 10)} goals in 10 such shots`;
+      }
+      const denom = Math.round(1 / xg);
+      if (denom > 250) {
+        return "Less than 1 goal in 250 such shots";
+      }
+      return `About 1 goal in ${Math.max(2, denom)} such shots`;
+    }
+
+    const YD_TO_M = 0.9144;
+    function fmtMeters(yards) {
+      return (yards * YD_TO_M).toFixed(1);
+    }
+
+    // Application state (starts at penalty spot matching Golden Test #1)
+    const state = {
+      x: 108,
+      y: 40,
+      body_part: "Right Foot",
+      free_kick: false,
+      under_pressure: false,
+      first_time: false,
+      defenders_in_cone: 0,
+      fullPitch: false,
+      showHeatmap: false,
+      showRealShots: false
+    };
+
+    // Embedded sample of 300 random non-penalty shots from data/xg_shots.csv (seed 42)
+    // Tuple format: [x, y, bodyIdx, fk, under_pressure, first_time, defenders_in_cone, isGoal, sb_xg]
+    const BODY_PARTS = ["Right Foot", "Left Foot", "Head", "Other"];
+    const REAL_SHOTS = [[90.5,28.3,0,1,0,0,2,0,0.0373],[109.5,32.3,0,0,0,0,0,0,0.1004],[107.1,34.6,1,0,0,0,3,0,0.0766],[103.1,41,1,0,0,0,1,0,0.104],[90,34,0,0,0,0,1,0,0.0218],[93.4,45,0,0,0,1,1,0,0.0266],[104.9,33.9,0,0,0,0,3,0,0.0691],[94.2,46.9,0,0,0,0,2,0,0.0281],[119.3,79.1,1,0,0,0,0,0,0.0002],[92.7,31.1,0,0,0,0,1,0,0.0228],[115,49,2,0,0,0,0,0,0.1091],[105.3,54.2,1,0,1,0,1,0,0.0328],[107.2,44.3,1,0,1,0,0,0,0.0842],[103.7,63.4,1,1,0,0,2,0,0.0087],[89,40,0,0,0,0,2,0,0.019],[103.1,49,0,0,0,0,2,0,0.0458],[118.5,55.7,0,0,0,0,0,0,0.0101],[106.3,33.8,0,0,1,0,1,0,0.1305],[98.9,33.5,0,0,0,0,0,0,0.0678],[97.7,35.5,1,0,0,1,0,0,0.0413],[111.6,39.7,2,0,1,0,1,0,0.0722],[98.9,38.2,2,0,0,0,1,0,0.0338],[90.7,33.8,0,0,0,1,0,0,0.104],[90.6,23.8,0,1,0,0,0,0,0.0085],[112.1,40.4,2,0,1,0,0,0,0.1478],[113.5,40.2,2,0,0,0,0,1,0.1555],[111,49,2,0,1,0,2,0,0.0551],[103.3,52.6,0,0,0,0,1,0,0.0354],[93.7,37.2,0,0,0,0,1,0,0.0345],[103.8,44.4,0,0,0,1,2,0,0.0703],[113,47,2,0,1,0,1,0,0.0933],[109.6,35.3,0,0,0,0,2,0,0.2385],[112.8,40.9,2,0,1,0,0,0,0.1317],[97.9,24.4,1,0,0,0,1,0,0.0244],[87,39.5,1,1,0,0,2,0,0.0241],[102.7,38.8,1,0,0,0,0,1,0.1371],[95.3,45.6,1,0,0,0,2,0,0.036],[111.2,40.8,2,0,1,0,0,0,0.0699],[111.2,39.8,2,0,0,0,1,0,0.126],[101.2,24.1,0,0,0,0,0,0,0.0312],[92.2,50.5,1,0,0,0,1,0,0.0199],[111.1,28,0,0,0,1,1,0,0.0423],[101,31,0,0,0,1,1,0,0.0426],[97.1,30.5,0,0,0,0,1,0,0.0291],[105.5,37,0,0,0,1,0,0,0.136],[114.4,45.7,2,0,0,0,0,1,0.144],[113.8,45.9,2,0,1,0,4,0,0.0762],[112,49,2,0,0,0,0,0,0.128],[90.8,29.1,1,0,0,0,0,0,0.0231],[92.6,22.6,0,0,0,0,0,0,0.0074],[112.3,50.2,0,0,0,0,1,0,0.0466],[107.6,28.8,0,0,1,0,0,0,0.0748],[112.6,40.5,2,0,0,0,1,0,0.1092],[113.5,26.4,1,0,0,0,1,0,0.0511],[108,40,1,0,0,0,0,1,0.7835],[103.7,45.1,0,0,0,1,0,0,0.2775],[105.4,38.9,0,0,1,0,1,0,0.0517],[111.4,33.6,0,0,0,1,1,0,0.073],[111.8,41.8,2,0,1,0,1,0,0.0706],[108,40,0,0,0,0,1,0,0.0975],[115,25,1,0,0,0,0,0,0.0256],[97.7,31.5,0,0,1,0,1,0,0.0254],[108,48.7,1,0,0,1,1,0,0.0727],[95.7,44.2,0,0,1,0,1,0,0.028],[103,33.2,0,0,0,0,2,0,0.0518],[116.9,34.1,0,0,0,1,0,0,0.3101],[101,29.1,1,0,0,1,0,0,0.0513],[112,46.8,2,0,1,0,1,0,0.0507],[113.2,60.3,0,0,0,1,0,0,0.014],[102.8,33.8,0,0,0,0,0,1,0.1305],[110.3,42.9,2,0,0,0,1,0,0.0627],[108,36,2,0,0,0,1,0,0.0651],[116.2,40.7,1,0,0,1,0,0,0.584],[108,30.5,0,0,0,0,0,0,0.2223],[96,23.4,0,1,0,0,2,0,0.0268],[107,48.2,1,0,0,0,0,0,0.0894],[107.6,36.4,0,0,1,0,0,0,0.3474],[106.8,57.6,1,0,0,0,1,0,0.0149],[89.6,27.1,1,0,0,0,1,0,0.0156],[98.3,58.8,0,0,0,0,0,0,0.0099],[101,31.1,0,0,0,0,0,1,0.0795],[97.5,36.3,1,0,0,0,0,0,0.1045],[103.1,22.4,0,0,0,0,0,0,0.027],[105.1,39.6,2,0,0,0,1,0,0.0315],[92,53.6,0,0,0,0,2,0,0.0191],[114,56,0,0,0,0,0,0,0.0136],[99.1,30.7,1,0,0,1,3,0,0.0279],[104.1,26.2,1,0,0,0,0,0,0.0806],[114,40.7,2,0,0,0,0,1,0.2885],[105,10.5,0,1,0,0,1,0,0.0067],[104,54.4,1,0,1,1,1,0,0.0226],[95.7,33.6,0,0,0,0,1,0,0.0472],[98.7,41.9,0,0,0,0,2,0,0.0446],[112.2,40.3,3,0,0,0,0,0,0.3153],[95.6,47.9,0,0,0,0,3,0,0.0223],[100.1,37.2,0,0,0,0,0,0,0.0762],[114.4,42.2,2,0,0,0,0,1,0.1988],[113,47.4,0,0,0,0,1,0,0.104],[102,45.2,1,0,0,0,2,0,0.0622],[111.9,38.9,0,0,0,1,0,1,0.5251],[100.2,26.9,0,0,0,0,0,0,0.035],[94.7,45.8,1,0,0,0,1,0,0.0418],[100.8,41.2,0,0,1,0,2,1,0.0595],[106,41,1,0,0,1,2,0,0.1307],[93.4,26.4,0,0,0,0,0,0,0.0198],[95.3,37,1,0,0,0,0,0,0.0551],[91,50,0,0,0,1,1,0,0.0187],[97.4,27.4,0,0,0,1,2,0,0.0278],[95,55,0,1,0,0,2,0,0.0406],[113.5,52.9,0,0,1,0,0,0,0.0674],[111.7,26.5,0,0,0,1,1,0,0.0527],[105,26,0,0,0,0,0,0,0.0664],[112,43.2,0,0,0,1,0,1,0.7963],[93.9,22.4,0,0,0,0,3,0,0.0082],[110.1,56,0,0,0,0,0,0,0.041],[113.5,57.6,0,0,0,1,0,0,0.0127],[115.8,29.4,2,0,0,0,1,0,0.0319],[115.7,24.7,1,0,0,1,0,0,0.0134],[112.9,30.4,0,0,0,0,1,0,0.0524],[112.9,56.7,0,0,0,0,0,0,0.0138],[100.2,36.6,0,0,1,1,3,0,0.0576],[113.8,38.2,0,0,0,1,0,0,0.4994],[106.6,53.6,0,0,0,0,0,0,0.0938],[106.5,38.9,0,0,0,1,1,0,0.1426],[104.1,28.3,0,0,0,0,2,0,0.0385],[109,42,0,0,0,1,1,0,0.07],[116.1,29.8,1,0,0,1,1,0,0.0508],[96.3,37.6,0,0,0,0,0,0,0.0572],[99,39,0,0,1,0,0,0,0.1011],[99.5,36.2,0,0,0,1,1,0,0.064],[107.2,41.9,0,0,0,1,0,0,0.1017],[108.3,36.7,2,0,1,0,0,0,0.0797],[115.8,41.9,2,0,0,0,0,0,0.262],[93.9,55.1,1,0,0,0,0,0,0.0204],[111.5,31.5,1,0,1,1,2,0,0.0437],[108.1,40.1,1,0,0,0,0,0,0.7835],[96,26,0,0,0,0,1,0,0.0188],[110.2,49.1,0,0,0,0,1,0,0.059],[106.9,35.8,2,0,0,0,1,0,0.0629],[97.4,37.9,1,0,0,0,1,0,0.0403],[114,46,0,0,0,1,0,1,0.2086],[98,62,0,0,0,1,0,0,0.0083],[103.4,43.3,1,0,0,1,2,1,0.1328],[96.3,31,1,0,0,0,1,0,0.0378],[109.5,45.5,2,0,0,0,2,1,0.0482],[111.3,35.6,2,0,0,0,0,0,0.068],[107.9,46.5,2,0,0,0,0,0,0.0608],[87.1,35.1,0,0,0,0,1,0,0.0186],[104.4,55.1,0,0,0,1,1,0,0.022],[101.5,23.9,0,0,0,0,1,0,0.0237],[92.7,49.6,1,0,0,0,2,0,0.0157],[93.6,48,1,1,0,0,2,0,0.055],[95.7,27.2,0,0,0,0,1,0,0.0223],[105.1,36,0,0,0,1,0,1,0.1696],[91.3,46.7,1,0,1,0,0,0,0.0276],[115.1,33.5,2,0,0,0,0,0,0.1333],[101,57,1,0,0,0,0,0,0.0292],[101.2,25.8,0,0,0,0,1,0,0.0382],[108.1,40.1,0,0,0,0,0,0,0.7835],[107.2,29.8,0,0,0,0,1,0,0.0725],[111.6,20.6,1,0,1,0,0,0,0.0088],[105,60,1,0,0,0,1,0,0.0101],[83,53,0,0,0,0,0,0,0.0056],[94.1,50.4,0,1,0,0,0,0,0.049],[107.2,50.7,2,0,0,0,1,0,0.0294],[96.7,29.3,0,1,0,0,5,0,0.0649],[108.4,35.7,1,0,0,1,0,0,0.286],[102,37.5,0,0,0,1,1,0,0.0956],[110.1,34.2,1,0,1,1,0,0,0.2829],[113,35,1,0,0,1,0,1,0.4673],[94.3,23.9,1,0,0,0,0,0,0.0186],[100.2,50.7,1,0,0,0,1,0,0.0422],[94.6,30.9,1,0,0,1,2,0,0.0262],[95.2,54.1,0,0,0,0,1,0,0.0217],[87.7,40.1,0,0,0,0,0,0,0.0291],[109.4,45.2,2,0,1,0,0,0,0.0511],[101,46,0,0,0,1,3,0,0.06],[107.7,42.7,0,0,0,1,1,0,0.0658],[100.6,43,0,0,0,1,1,0,0.0829],[90.8,50.6,0,0,0,0,0,0,0.023],[113.4,30.1,2,0,0,0,0,0,0.0477],[94.7,48.6,1,1,0,0,3,0,0.057],[112,54,0,0,0,0,0,0,0.0382],[114,50.8,0,0,1,0,0,0,0.2412],[98.1,51.6,1,0,0,0,1,0,0.037],[113,41,2,0,0,0,1,0,0.1792],[95.3,31.7,0,0,0,0,0,0,0.042],[89.2,37.9,0,0,0,0,1,0,0.0197],[101.5,39,1,0,1,0,1,0,0.0694],[93.7,28.9,0,0,0,0,1,0,0.0246],[118.5,33.7,2,0,1,0,1,0,0.075],[108.7,25.6,0,0,0,0,1,0,0.0527],[100.5,34.9,1,0,1,0,0,0,0.0746],[118.2,23.1,1,0,1,0,0,0,0.0109],[107.3,35.1,0,0,0,0,0,0,0.1109],[92,53,0,0,0,0,0,0,0.0231],[110.5,38.5,1,0,0,0,0,1,0.9572],[91.5,54.5,0,1,0,0,3,0,0.0197],[97.6,51.8,0,0,0,0,1,0,0.0241],[101.7,28.5,0,0,0,1,0,0,0.0442],[108.6,31.8,0,0,0,1,0,0,0.1013],[107.6,48.5,1,0,1,1,0,0,0.1402],[111.8,40.5,2,0,1,0,1,0,0.0914],[99.7,31.4,1,0,0,1,4,0,0.0385],[100.7,20.8,0,0,0,0,1,0,0.0074],[101.1,44.1,1,0,0,1,4,0,0.0557],[70.9,38.9,0,0,0,0,1,0,0.0046],[112.3,34.5,2,0,1,0,1,0,0.061],[110.5,40.8,2,0,0,0,1,0,0.0705],[110.7,54.6,0,0,0,1,0,0,0.0955],[103.1,26.4,0,0,1,0,0,0,0.0465],[103.1,50.1,0,0,0,0,2,0,0.0265],[108,25.7,0,0,0,1,0,0,0.139],[93.9,39,0,0,0,0,2,0,0.0274],[93,21,0,0,0,0,0,0,0.0097],[109.4,42.1,2,0,0,0,0,0,0.0449],[106.9,35.8,0,0,0,1,1,0,0.0945],[89.7,57.6,0,0,0,0,0,0,0.0071],[96.1,35.9,0,0,0,0,0,0,0.0431],[108.2,26.5,1,0,0,1,1,0,0.0605],[107.3,21.2,1,0,0,0,1,0,0.0069],[89.7,32.2,0,0,0,1,1,0,0.0226],[114,43.2,2,0,1,0,1,0,0.1434],[111.4,34.5,1,0,1,1,1,0,0.0922],[78,41,1,0,0,0,2,0,0.0063],[114,47.6,2,0,1,0,0,0,0.0841],[94,29,0,0,0,1,2,0,0.02],[95.3,32.8,1,0,0,0,1,0,0.0385],[101.7,50.9,1,1,0,0,5,0,0.0784],[109.4,45.5,2,0,1,0,2,0,0.0732],[98.6,28.9,0,0,1,0,0,0,0.0405],[107.3,38.6,0,0,0,1,0,1,0.1728],[100.1,42.4,1,0,0,0,0,0,0.1289],[109.2,49.3,0,0,1,0,0,0,0.3265],[102,39,1,0,0,1,0,1,0.0863],[113,51.4,0,0,1,1,0,0,0.0649],[96.2,21.6,0,0,0,0,1,0,0.0099],[106.2,40.4,2,0,1,0,0,0,0.0494],[47.2,40.2,1,0,0,0,1,0,0.0035],[111.1,28.3,1,0,0,1,0,0,0.1244],[117.8,27.1,1,0,0,0,0,1,0.0133],[108.6,52.4,0,0,0,1,0,0,0.1301],[103.7,32.6,0,0,0,0,0,1,0.4307],[107,33,0,0,0,0,1,0,0.0685],[106,50,1,0,0,0,0,0,0.1529],[106.5,39.6,0,0,0,1,1,0,0.153],[103,53.4,0,0,0,0,0,0,0.0478],[117.4,43,2,0,0,0,0,1,0.6422],[104.3,51.2,1,0,0,0,1,0,0.0848],[99.4,42.8,0,0,0,1,1,0,0.0747],[118,39,1,0,0,1,1,0,0.6931],[107,29.6,1,0,1,0,0,0,0.1792],[106,31,1,0,0,0,3,0,0.073],[98.9,40.3,0,0,0,1,1,0,0.0514],[108.1,40.1,0,0,0,0,0,1,0.7835],[115.1,42,2,0,0,0,0,0,0.2299],[107.8,43.5,0,0,0,1,1,0,0.087],[105.9,32.5,0,0,0,0,0,0,0.203],[110.7,43.3,1,0,0,0,0,1,0.5379],[115.3,35.1,1,0,0,1,0,0,0.3755],[107.3,49,0,0,0,1,1,0,0.0954],[109.3,30.6,1,0,0,0,0,1,0.4296],[114.6,24.1,0,0,0,0,0,0,0.0143],[111.8,51.7,1,0,0,1,0,0,0.1882],[101.4,49.7,0,0,0,0,1,0,0.0631],[98.4,27.3,0,0,0,0,0,0,0.0405],[96.1,53.1,0,0,0,0,0,0,0.0271],[110.8,47.1,0,0,0,1,1,1,0.2156],[104.6,35.5,1,0,1,1,1,1,0.0684],[94.7,48.4,0,0,0,0,0,0,0.0439],[108.6,17.9,0,0,1,0,1,0,0.0048],[97,30.3,0,0,0,0,1,0,0.033],[108.2,54.8,1,0,0,0,0,1,0.0293],[114,27,1,0,0,1,0,0,0.0637],[99.1,27,0,1,0,0,4,0,0.0628],[97.8,36.3,0,0,0,1,0,0,0.0521],[89.5,22.9,0,0,0,0,0,0,0.0061],[113,45.4,2,0,0,0,0,0,0.1407],[108.1,50.9,0,0,0,0,1,0,0.0685],[108.7,30.6,2,0,0,0,0,0,0.033],[99.4,27.7,0,0,0,0,0,0,0.0564],[97,45.6,1,0,1,0,1,0,0.0268],[110.4,38.5,3,0,1,0,1,0,0.0646],[96.8,36.4,0,0,0,1,2,0,0.0423],[113.6,37.9,2,0,1,0,1,0,0.1174],[97.8,59.4,1,0,0,0,0,0,0.0094],[111,36.6,2,0,0,0,1,0,0.0902],[109.4,43.4,2,0,0,0,0,0,0.1104],[99,32,0,0,0,0,0,0,0.0606],[94.7,30.5,1,0,0,0,0,1,0.0379],[97.7,32.5,1,0,0,0,1,0,0.017],[97.2,25.8,0,0,0,0,1,0,0.0275],[112.7,31.3,2,0,1,0,2,0,0.0596],[103.7,19.9,0,0,0,0,1,0,0.0084],[98.1,21.5,0,0,0,0,0,0,0.011],[103.3,38.9,1,0,1,1,2,0,0.0817],[95.4,37.9,0,0,0,0,0,0,0.151],[114.8,41.4,2,0,1,0,1,1,0.1082],[110.6,25.9,0,0,0,0,0,0,0.037],[93,40.5,0,0,0,0,1,0,0.0281]];
+
+    // Previous shot snapshot for "What changed" line
+    let lastComparison = null;
+
+    const VIEWBOX_HALF = { x: 57, y: -3, w: 68, h: 86 };
+    const VIEWBOX_FULL = { x: -5, y: -3, w: 130, h: 86 };
+    const HEATMAP_STEP = 2;
+
+    // DOM references
+    const els = {
+      svg: document.getElementById("pitch-svg"),
+      viewHalf: document.getElementById("view-half"),
+      viewFull: document.getElementById("view-full"),
+      toggleHeatmap: document.getElementById("toggle-heatmap"),
+      heatmapLayer: document.getElementById("heatmap-layer"),
+      heatmapLegend: document.getElementById("heatmap-legend"),
+      toggleRealShots: document.getElementById("toggle-realshots"),
+      realShotsLayer: document.getElementById("real-shots-layer"),
+      realShotsBar: document.getElementById("real-shots-bar"),
+      rsGoalCount: document.getElementById("rs-goal-count"),
+      rsMissCount: document.getElementById("rs-miss-count"),
+      realShotTooltip: document.getElementById("real-shot-tooltip"),
+      coordPill: document.getElementById("coord-pill"),
+      shotCone: document.getElementById("shot-cone"),
+      shotDistLine: document.getElementById("shot-dist-line"),
+      shotHalo: document.getElementById("shot-halo"),
+      shotDot: document.getElementById("shot-dot"),
+      shotLabelGroup: document.getElementById("shot-label-group"),
+      shotLabelBg: document.getElementById("shot-label-bg"),
+      shotLabelText: document.getElementById("shot-label-text"),
+      xgPct: document.getElementById("xg-pct"),
+      xgRaw: document.getElementById("xg-raw"),
+      xgBarFill: document.getElementById("xg-bar-fill"),
+      xgPlain: document.getElementById("xg-plain"),
+      whatChanged: document.getElementById("what-changed"),
+      reliabilityNote: document.getElementById("reliability-note"),
+      reliabilityText: document.getElementById("reliability-text"),
+      fkWallNote: document.getElementById("fk-wall-note"),
+      geoDistance: document.getElementById("geo-distance"),
+      geoAngle: document.getElementById("geo-angle"),
+      bpButtons: Array.from(document.querySelectorAll(".bp-btn")),
+      toggleFk: document.getElementById("toggle-fk"),
+      togglePressure: document.getElementById("toggle-pressure"),
+      toggleFirstTime: document.getElementById("toggle-first-time"),
+      coneDec: document.getElementById("cone-dec"),
+      coneInc: document.getElementById("cone-inc"),
+      coneVal: document.getElementById("cone-val"),
+      testBadge: document.getElementById("test-badge"),
+      testBadgeText: document.getElementById("test-badge-text"),
+      testDrawer: document.getElementById("test-drawer"),
+      testTableBody: document.getElementById("test-table-body"),
+      tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
+      panelShotmap: document.getElementById("panel-shotmap"),
+      panelComparison: document.getElementById("panel-comparison"),
+      panelAbout: document.getElementById("panel-about"),
+      compSummaryPills: document.getElementById("comp-summary-pills"),
+      metricsTableBody: document.getElementById("metrics-table-body"),
+      compNote: document.getElementById("comp-note"),
+      calSvg: document.getElementById("calibration-svg"),
+      calTooltip: document.getElementById("cal-tooltip")
+    };
+
+    // Heatmap grid (2-yard cells across attacking half: x in [60, 120), y in [0, 80))
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const heatmapCells = [];
+    let lastHeatmapKey = "";
+
+    const HEAT_STOPS = [
+      { t: 0.0, r: 15, g: 23, b: 42, a: 0.06 },
+      { t: 0.22, r: 14, g: 116, b: 144, a: 0.36 },
+      { t: 0.46, r: 34, g: 197, b: 94, a: 0.56 },
+      { t: 0.7, r: 250, g: 204, b: 21, a: 0.72 },
+      { t: 0.87, r: 249, g: 115, b: 22, a: 0.82 },
+      { t: 1.0, r: 239, g: 68, b: 68, a: 0.88 }
+    ];
+
+    function xgToHeatColor(xg) {
+      const t = Math.min(1, Math.pow(Math.max(xg, 0) / 0.7, 0.52));
+      let lo = HEAT_STOPS[0];
+      let hi = HEAT_STOPS[HEAT_STOPS.length - 1];
+      for (let i = 0; i < HEAT_STOPS.length - 1; i++) {
+        if (t >= HEAT_STOPS[i].t && t <= HEAT_STOPS[i + 1].t) {
+          lo = HEAT_STOPS[i];
+          hi = HEAT_STOPS[i + 1];
+          break;
+        }
+      }
+      const span = hi.t - lo.t || 1;
+      const f = (t - lo.t) / span;
+      const r = Math.round(lo.r + (hi.r - lo.r) * f);
+      const g = Math.round(lo.g + (hi.g - lo.g) * f);
+      const b = Math.round(lo.b + (hi.b - lo.b) * f);
+      const a = (lo.a + (hi.a - lo.a) * f).toFixed(3);
+      return { fill: `rgb(${r},${g},${b})`, opacity: a };
+    }
+
+    function initHeatmapGrid() {
+      const frag = document.createDocumentFragment();
+      for (let gx = 60; gx < 120; gx += HEATMAP_STEP) {
+        for (let gy = 0; gy < 80; gy += HEATMAP_STEP) {
+          const rect = document.createElementNS(SVG_NS, "rect");
+          rect.setAttribute("x", gx);
+          rect.setAttribute("y", gy);
+          // Slight overlap (+0.08) prevents hairline seams between cells
+          rect.setAttribute("width", HEATMAP_STEP + 0.08);
+          rect.setAttribute("height", HEATMAP_STEP + 0.08);
+          frag.appendChild(rect);
+          heatmapCells.push({
+            el: rect,
+            cx: gx + HEATMAP_STEP / 2,
+            cy: gy + HEATMAP_STEP / 2
+          });
+        }
+      }
+      els.heatmapLayer.appendChild(frag);
+    }
+
+    function updateHeatmap() {
+      els.heatmapLayer.style.display = state.showHeatmap ? "" : "none";
+      els.heatmapLegend.hidden = !state.showHeatmap;
+      els.toggleHeatmap.classList.toggle("active", state.showHeatmap);
+      els.toggleHeatmap.setAttribute("aria-pressed", String(state.showHeatmap));
+
+      if (!state.showHeatmap) return;
+
+      const key = `${state.body_part}|${state.free_kick}|${state.under_pressure}|${state.first_time}|${state.defenders_in_cone}`;
+      if (key === lastHeatmapKey) return;
+      lastHeatmapKey = key;
+
+      for (let i = 0; i < heatmapCells.length; i++) {
+        const cell = heatmapCells[i];
+        const { xg } = computeShotXG({
+          x: cell.cx,
+          y: cell.cy,
+          body_part: state.body_part,
+          free_kick: state.free_kick,
+          under_pressure: state.under_pressure,
+          first_time: state.first_time,
+          defenders_in_cone: state.defenders_in_cone
+        });
+        const { fill, opacity } = xgToHeatColor(xg);
+        cell.el.setAttribute("fill", fill);
+        cell.el.setAttribute("fill-opacity", opacity);
+      }
+    }
+
+    function recordComparison(reason) {
+      lastComparison = {
+        prevXg: computeShotXG(state).xg,
+        reason
+      };
+    }
+
+    function getActiveViewBox() {
+      return state.fullPitch ? VIEWBOX_FULL : VIEWBOX_HALF;
+    }
+
+    function render() {
+      const res = computeShotXG(state);
+      const { x, y } = state;
+
+      // Update SVG cone, guideline, and shot marker
+      els.shotCone.setAttribute("points", `${x},${y} 120,36 120,44`);
+      els.shotDistLine.setAttribute("x1", x);
+      els.shotDistLine.setAttribute("y1", y);
+      els.shotHalo.setAttribute("cx", x);
+      els.shotHalo.setAttribute("cy", y);
+      els.shotDot.setAttribute("cx", x);
+      els.shotDot.setAttribute("cy", y);
+
+      // Update live SVG label and keep it cleanly inside the current viewBox
+      const labelStr = `${fmtMeters(res.rawDistance)} m · ${res.angleDeg.toFixed(1)}°`;
+      els.shotLabelText.textContent = labelStr;
+
+      const vb = getActiveViewBox();
+      const labelScale = state.fullPitch ? 1.45 : 1;
+      const boxW = 24 * labelScale;
+      const boxH = 5.4 * labelScale;
+      els.shotLabelBg.setAttribute("width", boxW);
+      els.shotLabelBg.setAttribute("height", boxH);
+      els.shotLabelBg.setAttribute("rx", 1.2 * labelScale);
+      els.shotLabelText.setAttribute("x", boxW / 2);
+      els.shotLabelText.setAttribute("y", boxH * 0.67);
+      els.shotLabelText.setAttribute("font-size", 2.55 * labelScale);
+
+      // Prefer placing label to the left and slightly above the shot
+      let lx = x - boxW - 2.2 * labelScale;
+      let ly = y - boxH - 1.6 * labelScale;
+      if (lx < vb.x + 1.5) {
+        lx = x + 2.4 * labelScale;
+      }
+      if (lx + boxW > vb.x + vb.w - 1.5) {
+        lx = vb.x + vb.w - boxW - 1.5;
+      }
+      if (ly < vb.y + 1.5) {
+        ly = y + 2.6 * labelScale;
+      }
+      if (ly + boxH > vb.y + vb.h - 1.5) {
+        ly = vb.y + vb.h - boxH - 1.5;
+      }
+      els.shotLabelGroup.setAttribute("transform", `translate(${lx.toFixed(2)}, ${ly.toFixed(2)})`);
+
+      // Update coordinate pill
+      els.coordPill.textContent = `x: ${fmtMeters(x)} m, y: ${fmtMeters(y)} m`;
+
+      // Update Result Card
+      const pct = (res.xg * 100).toFixed(1);
+      els.xgPct.textContent = `${pct}%`;
+      els.xgRaw.textContent = `${res.xg.toFixed(4)} xG`;
+      els.xgBarFill.style.width = `${Math.min(100, Math.max(0.8, res.xg * 100)).toFixed(1)}%`;
+      els.xgPlain.textContent = formatPlainEnglish(res.xg);
+
+      // "What changed" line
+      if (!lastComparison) {
+        els.whatChanged.className = "what-changed";
+        els.whatChanged.textContent = "Click another spot or adjust a condition to compare xG.";
+      } else {
+        const diffPp = (res.xg - lastComparison.prevXg) * 100;
+        const prevPct = (lastComparison.prevXg * 100).toFixed(1);
+        const absDiff = Math.abs(diffPp).toFixed(1);
+        if (Math.abs(diffPp) < 0.05) {
+          els.whatChanged.className = "what-changed";
+          els.whatChanged.innerHTML = `<strong>0.0 pp</strong> (${prevPct}% &rarr; ${pct}%) ${lastComparison.reason}`;
+        } else if (diffPp > 0) {
+          els.whatChanged.className = "what-changed up";
+          els.whatChanged.innerHTML = `<strong>&#9650; +${absDiff} pp</strong> (${prevPct}% &rarr; ${pct}%) ${lastComparison.reason}`;
+        } else {
+          els.whatChanged.className = "what-changed down";
+          els.whatChanged.innerHTML = `<strong>&#9660; &minus;${absDiff} pp</strong> (${prevPct}% &rarr; ${pct}%) ${lastComparison.reason}`;
+        }
+      }
+
+      els.geoDistance.textContent = `${fmtMeters(res.rawDistance)} m`;
+      els.geoAngle.textContent = `${res.angleDeg.toFixed(1)}°`;
+
+      // Inline "Less reliable estimate" warning (within 2 yards / 1.8 m or free kick)
+      const isVeryClose = res.rawDistance <= 2.0;
+      const isFreeKick = state.free_kick;
+      if (isVeryClose || isFreeKick) {
+        const reasons = [];
+        if (isVeryClose) reasons.push("shot within 1.8 m of goal");
+        if (isFreeKick) reasons.push("free kick");
+        els.reliabilityText.innerHTML = `<strong>Less reliable estimate</strong> &mdash; ${reasons.join(" &amp; ")}.`;
+        els.reliabilityNote.hidden = false;
+      } else {
+        els.reliabilityNote.hidden = true;
+      }
+
+      // Free-kick wall warning
+      els.fkWallNote.hidden = !isFreeKick;
+
+      // Sync stepper controls
+      els.coneVal.textContent = String(state.defenders_in_cone);
+      els.coneDec.disabled = state.defenders_in_cone <= 0;
+      els.coneInc.disabled = state.defenders_in_cone >= 8;
+
+      // Update heatmap overlay if enabled
+      updateHeatmap();
+
+      // Update real shots layer visibility
+      updateRealShotsLayer();
+    }
+
+    function setPitchView(fullPitch) {
+      state.fullPitch = fullPitch;
+      const vb = getActiveViewBox();
+      els.svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+      els.viewHalf.classList.toggle("active", !fullPitch);
+      els.viewHalf.setAttribute("aria-pressed", String(!fullPitch));
+      els.viewFull.classList.toggle("active", fullPitch);
+      els.viewFull.setAttribute("aria-pressed", String(fullPitch));
+
+      // If switching back to attacking half while shot is in defending half, bring it to halfway line
+      if (!fullPitch && state.x < 60) {
+        state.x = 60;
+      }
+      render();
+    }
+
+    function updateShotFromPointerEvent(evt) {
+      const ctm = els.svg.getScreenCTM();
+      if (!ctm) return;
+      const pt = els.svg.createSVGPoint();
+      pt.x = evt.clientX;
+      pt.y = evt.clientY;
+      const svgPt = pt.matrixTransform(ctm.inverse());
+
+      const minX = state.fullPitch ? 0.5 : 60;
+      const maxX = 119.5;
+      const minY = 0.5;
+      const maxY = 79.5;
+
+      state.x = Math.round(Math.min(maxX, Math.max(minX, svgPt.x)) * 10) / 10;
+      state.y = Math.round(Math.min(maxY, Math.max(minY, svgPt.y)) * 10) / 10;
+      render();
+    }
+
+    // Pointer interactions on pitch (supports mouse + touch click & drag)
+    let isDragging = false;
+
+    els.svg.addEventListener("pointerdown", (evt) => {
+      recordComparison(`vs previous spot (${fmtMeters(state.x)} m, ${fmtMeters(state.y)} m)`);
+      isDragging = true;
+      els.svg.classList.add("dragging");
+      if (els.svg.setPointerCapture) {
+        els.svg.setPointerCapture(evt.pointerId);
+      }
+      updateShotFromPointerEvent(evt);
+    });
+
+    els.svg.addEventListener("pointermove", (evt) => {
+      if (!isDragging) return;
+      updateShotFromPointerEvent(evt);
+    });
+
+    function endDrag(evt) {
+      if (!isDragging) return;
+      isDragging = false;
+      els.svg.classList.remove("dragging");
+      if (els.svg.releasePointerCapture && els.svg.hasPointerCapture && els.svg.hasPointerCapture(evt.pointerId)) {
+        els.svg.releasePointerCapture(evt.pointerId);
+      }
+    }
+
+    els.svg.addEventListener("pointerup", endDrag);
+    els.svg.addEventListener("pointercancel", endDrag);
+
+    // Pitch view toggles
+    els.viewHalf.addEventListener("click", () => setPitchView(false));
+    els.viewFull.addEventListener("click", () => setPitchView(true));
+
+    // Heatmap toggle
+    els.toggleHeatmap.addEventListener("click", () => {
+      state.showHeatmap = !state.showHeatmap;
+      render();
+    });
+
+    // Real shots layer (300 sampled shots from xg_shots.csv)
+    function initRealShotsLayer() {
+      const frag = document.createDocumentFragment();
+      let goalCount = 0;
+      let missCount = 0;
+
+      // Draw misses first, then goals on top so goals remain clearly visible
+      const ordered = [...REAL_SHOTS].sort((a, b) => a[7] - b[7]);
+
+      ordered.forEach((row) => {
+        const [sx, sy, bpIdx, fk, press, ft, cone, isGoal, sbXg] = row;
+        if (isGoal) goalCount += 1;
+        else missCount += 1;
+
+        const bodyPart = BODY_PARTS[bpIdx] || "Right Foot";
+        const ourXg = computeShotXG({
+          x: sx,
+          y: sy,
+          body_part: bodyPart,
+          free_kick: Boolean(fk),
+          under_pressure: Boolean(press),
+          first_time: Boolean(ft),
+          defenders_in_cone: cone
+        }).xg;
+
+        const baseR = isGoal ? 1.05 : 0.72;
+        const baseStroke = isGoal ? "#052e16" : "#4c0519";
+        const baseStrokeW = isGoal ? 0.34 : 0.24;
+
+        const circle = document.createElementNS(SVG_NS, "circle");
+        circle.setAttribute("cx", sx);
+        circle.setAttribute("cy", sy);
+        circle.setAttribute("r", baseR);
+        circle.setAttribute("fill", isGoal ? "#22c55e" : "#f43f5e");
+        circle.setAttribute("fill-opacity", isGoal ? "0.94" : "0.56");
+        circle.setAttribute("stroke", baseStroke);
+        circle.setAttribute("stroke-width", baseStrokeW);
+        circle.setAttribute("class", "real-shot-dot");
+        circle.setAttribute("tabindex", "0");
+        circle.setAttribute(
+          "aria-label",
+          `${isGoal ? "Goal" : "Miss"} (${bodyPart}): Ours ${(ourXg * 100).toFixed(1)}%, StatsBomb ${(sbXg * 100).toFixed(1)}%`
+        );
+
+        const showShotTip = () => {
+          circle.setAttribute("r", isGoal ? "1.65" : "1.35");
+          circle.setAttribute("stroke", "#ffffff");
+          circle.setAttribute("stroke-width", "0.45");
+          circle.setAttribute("fill-opacity", "1");
+
+          const outcomeTag = isGoal
+            ? `<span class="rs-tag-goal">Goal</span>`
+            : `<span class="rs-tag-miss">Miss</span>`;
+          const fkTag = fk ? " · FK" : "";
+          els.realShotTooltip.innerHTML =
+            `${outcomeTag} · ${bodyPart}${fkTag} · (${fmtMeters(sx)} m, ${fmtMeters(sy)} m) · ` +
+            `Ours: <strong>${(ourXg * 100).toFixed(1)}%</strong> (${ourXg.toFixed(4)}) · ` +
+            `StatsBomb: <strong>${(sbXg * 100).toFixed(1)}%</strong> (${sbXg.toFixed(4)})`;
+        };
+
+        const hideShotTip = () => {
+          circle.setAttribute("r", String(baseR));
+          circle.setAttribute("stroke", baseStroke);
+          circle.setAttribute("stroke-width", String(baseStrokeW));
+          circle.setAttribute("fill-opacity", isGoal ? "0.94" : "0.56");
+        };
+
+        circle.addEventListener("mouseenter", showShotTip);
+        circle.addEventListener("focus", showShotTip);
+        circle.addEventListener("mouseleave", hideShotTip);
+        circle.addEventListener("blur", hideShotTip);
+
+        frag.appendChild(circle);
+      });
+
+      els.realShotsLayer.appendChild(frag);
+      els.rsGoalCount.textContent = `Goal (${goalCount})`;
+      els.rsMissCount.textContent = `Miss (${missCount})`;
+    }
+
+    function updateRealShotsLayer() {
+      els.realShotsLayer.style.display = state.showRealShots ? "" : "none";
+      els.realShotsBar.hidden = !state.showRealShots;
+      els.toggleRealShots.classList.toggle("active", state.showRealShots);
+      els.toggleRealShots.setAttribute("aria-pressed", String(state.showRealShots));
+    }
+
+    els.toggleRealShots.addEventListener("click", () => {
+      state.showRealShots = !state.showRealShots;
+      render();
+    });
+
+    // Body part selector
+    els.bpButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (state.body_part === btn.dataset.bodyPart) return;
+        recordComparison(`after switching to ${btn.dataset.bodyPart}`);
+        state.body_part = btn.dataset.bodyPart;
+        els.bpButtons.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle("active", active);
+          b.setAttribute("aria-pressed", String(active));
+        });
+        render();
+      });
+    });
+
+    // Shot condition toggles
+    els.toggleFk.addEventListener("change", (e) => {
+      recordComparison(`after turning Free kick ${e.target.checked ? "on" : "off"}`);
+      state.free_kick = e.target.checked;
+      render();
+    });
+
+    els.togglePressure.addEventListener("change", (e) => {
+      recordComparison(`after turning Under pressure ${e.target.checked ? "on" : "off"}`);
+      state.under_pressure = e.target.checked;
+      render();
+    });
+
+    els.toggleFirstTime.addEventListener("change", (e) => {
+      recordComparison(`after turning First-time shot ${e.target.checked ? "on" : "off"}`);
+      state.first_time = e.target.checked;
+      render();
+    });
+
+    // Defenders stepper
+    els.coneDec.addEventListener("click", () => {
+      if (state.defenders_in_cone > 0) {
+        const next = state.defenders_in_cone - 1;
+        recordComparison(`after setting Defenders in cone to ${next}`);
+        state.defenders_in_cone = next;
+        render();
+      }
+    });
+
+    els.coneInc.addEventListener("click", () => {
+      if (state.defenders_in_cone < 8) {
+        const next = state.defenders_in_cone + 1;
+        recordComparison(`after setting Defenders in cone to ${next}`);
+        state.defenders_in_cone = next;
+        render();
+      }
+    });
+
+    // Self-test drawer toggle
+    els.testBadge.addEventListener("click", () => {
+      const nextHidden = !els.testDrawer.hidden;
+      els.testDrawer.hidden = nextHidden;
+      els.testBadge.setAttribute("aria-expanded", String(!nextHidden));
+    });
+
+    // Run embedded golden tests against data/tests.json
+    function runSelfTests() {
+      const TOL = 0.001;
+      let passed = 0;
+      const rows = [];
+      const consoleRows = [];
+
+      GOLDEN_TESTS.forEach((tc, idx) => {
+        const out = computeShotXG(tc);
+        const distOk = Math.abs(out.distance - tc.expected_distance) <= TOL;
+        const angleOk = Math.abs(out.angle - tc.expected_angle_rad) <= TOL;
+        const xgOk = Math.abs(out.xg - tc.expected_xg) <= TOL;
+        const ok = distOk && angleOk && xgOk;
+        if (ok) passed += 1;
+
+        const flags = [tc.body_part];
+        if (tc.free_kick) flags.push("FK");
+        if (tc.under_pressure) flags.push("Press");
+        if (tc.first_time) flags.push("1st");
+        flags.push(`Cone:${tc.defenders_in_cone}`);
+
+        rows.push(
+          `<tr>` +
+            `<td>${idx + 1}</td>` +
+            `<td>(${tc.x}, ${tc.y})</td>` +
+            `<td>${flags.join(", ")}</td>` +
+            `<td>${tc.expected_distance.toFixed(4)} / ${out.distance.toFixed(4)}</td>` +
+            `<td>${tc.expected_angle_rad.toFixed(4)} / ${out.angle.toFixed(4)}</td>` +
+            `<td>${tc.expected_xg.toFixed(4)} / ${out.xg.toFixed(4)}</td>` +
+            `<td class="${ok ? "status-ok" : "status-err"}">${ok ? "PASS" : "FAIL"}</td>` +
+          `</tr>`
+        );
+
+        consoleRows.push({
+          case: idx + 1,
+          spot: `(${tc.x}, ${tc.y})`,
+          dist_exp: tc.expected_distance,
+          dist_got: Number(out.distance.toFixed(4)),
+          angle_exp: tc.expected_angle_rad,
+          angle_got: Number(out.angle.toFixed(4)),
+          xg_exp: tc.expected_xg,
+          xg_got: Number(out.xg.toFixed(4)),
+          pass: ok
+        });
+      });
+
+      const allPassed = passed === GOLDEN_TESTS.length;
+      els.testTableBody.innerHTML = rows.join("");
+      els.testBadge.classList.remove("pass", "fail");
+      els.testBadge.classList.add(allPassed ? "pass" : "fail");
+      els.testBadgeText.textContent = allPassed
+        ? `Self-test: ${passed}/${GOLDEN_TESTS.length} passed`
+        : `Self-test: ${passed}/${GOLDEN_TESTS.length} passed`;
+
+      if (allPassed) {
+        console.log(`[xG Self-Test] PASS (${passed}/${GOLDEN_TESTS.length} golden cases within ±${TOL})`);
+      } else {
+        console.error(`[xG Self-Test] FAIL (${passed}/${GOLDEN_TESTS.length} golden cases passed)`);
+      }
+      console.table(consoleRows);
+      return allPassed;
+    }
+
+    // Tab navigation
+    function setActiveTab(tabName) {
+      els.tabButtons.forEach((btn) => {
+        const active = btn.dataset.tab === tabName;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", String(active));
+      });
+      els.panelShotmap.hidden = tabName !== "shotmap";
+      els.panelComparison.hidden = tabName !== "comparison";
+      els.panelAbout.hidden = tabName !== "about";
+    }
+
+    els.tabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
+    });
+
+    // Render Comparison tab (metrics table + SVG calibration chart from COMPARISON)
+    function renderComparison() {
+      const mOurs = COMPARISON.metrics.ours;
+      const mSb = COMPARISON.metrics.statsbomb;
+      const goalRatePct = ((COMPARISON.n_goals_total / COMPARISON.n_shots_total) * 100).toFixed(2);
+
+      els.compSummaryPills.innerHTML =
+        `<span class="summary-pill">Dataset shots: ${COMPARISON.n_shots_total.toLocaleString("en-US")}</span>` +
+        `<span class="summary-pill">Dataset goals: ${COMPARISON.n_goals_total.toLocaleString("en-US")}</span>` +
+        `<span class="summary-pill">Observed rate: ${goalRatePct}%</span>` +
+        `<span class="summary-pill">Calibration test set: 4,088 shots, 376 goals</span>`;
+
+      const metricRows = [
+        { name: "ROC AUC", ours: mOurs.auc, sb: mSb.auc, dir: "Higher" },
+        { name: "Log Loss", ours: mOurs.log_loss, sb: mSb.log_loss, dir: "Lower" },
+        { name: "Brier Score", ours: mOurs.brier, sb: mSb.brier, dir: "Lower" },
+        { name: "Corr. with StatsBomb", ours: mOurs.corr_with_statsbomb, sb: mSb.corr_with_statsbomb, dir: "Closer to 1" }
+      ];
+
+      els.metricsTableBody.innerHTML = metricRows
+        .map(
+          (r) =>
+            `<tr>` +
+              `<td class="metric-name">${r.name}</td>` +
+              `<td class="num col-ours">${r.ours.toFixed(4)}</td>` +
+              `<td class="num col-sb">${r.sb.toFixed(4)}</td>` +
+              `<td class="metric-dir">${r.dir}</td>` +
+            `</tr>`
+        )
+        .join("");
+
+      els.compNote.textContent = COMPARISON.note;
+
+      // Build SVG calibration chart
+      const svg = els.calSvg;
+      svg.innerHTML = "";
+
+      const W = 540;
+      const H = 410;
+      const padL = 62;
+      const padR = 24;
+      const padT = 20;
+      const padB = 54;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+      const maxVal = 0.4;
+
+      const xPos = (v) => padL + (v / maxVal) * plotW;
+      const yPos = (v) => padT + plotH - (v / maxVal) * plotH;
+
+      function addEl(parent, tag, attrs, text) {
+        const el = document.createElementNS(SVG_NS, tag);
+        for (const [k, v] of Object.entries(attrs || {})) {
+          el.setAttribute(k, String(v));
+        }
+        if (text !== undefined) el.textContent = text;
+        parent.appendChild(el);
+        return el;
+      }
+
+      // Gridlines & axis ticks (0.00 to 0.40)
+      const ticks = [0, 0.1, 0.2, 0.3, 0.4];
+      ticks.forEach((t) => {
+        const gx = xPos(t);
+        const gy = yPos(t);
+
+        addEl(svg, "line", {
+          x1: padL,
+          y1: gy,
+          x2: padL + plotW,
+          y2: gy,
+          stroke: t === 0 ? "rgba(148,163,184,0.45)" : "rgba(148,163,184,0.16)",
+          "stroke-width": t === 0 ? 1.2 : 1
+        });
+
+        addEl(svg, "line", {
+          x1: gx,
+          y1: padT,
+          x2: gx,
+          y2: padT + plotH,
+          stroke: t === 0 ? "rgba(148,163,184,0.45)" : "rgba(148,163,184,0.16)",
+          "stroke-width": t === 0 ? 1.2 : 1
+        });
+
+        addEl(
+          svg,
+          "text",
+          {
+            x: gx,
+            y: padT + plotH + 19,
+            "text-anchor": "middle",
+            fill: "#94a3b8",
+            "font-size": 11.5,
+            "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace"
+          },
+          t.toFixed(2)
+        );
+
+        addEl(
+          svg,
+          "text",
+          {
+            x: padL - 10,
+            y: gy + 4,
+            "text-anchor": "end",
+            fill: "#94a3b8",
+            "font-size": 11.5,
+            "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace"
+          },
+          t.toFixed(2)
+        );
+      });
+
+      // Axis labels
+      addEl(
+        svg,
+        "text",
+        {
+          x: padL + plotW / 2,
+          y: H - 12,
+          "text-anchor": "middle",
+          fill: "#cbd5e1",
+          "font-size": 12.5,
+          "font-weight": 600,
+          "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+        },
+        "Mean Predicted xG"
+      );
+
+      addEl(
+        svg,
+        "text",
+        {
+          x: 17,
+          y: padT + plotH / 2,
+          "text-anchor": "middle",
+          fill: "#cbd5e1",
+          "font-size": 12.5,
+          "font-weight": 600,
+          "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          transform: `rotate(-90 17 ${padT + plotH / 2})`
+        },
+        "Observed Goal Rate"
+      );
+
+      // Perfect calibration diagonal (y = x)
+      addEl(svg, "line", {
+        x1: xPos(0),
+        y1: yPos(0),
+        x2: xPos(maxVal),
+        y2: yPos(maxVal),
+        stroke: "#94a3b8",
+        "stroke-width": 1.5,
+        "stroke-dasharray": "6 5",
+        opacity: 0.8
+      });
+
+      addEl(
+        svg,
+        "text",
+        {
+          x: xPos(0.295),
+          y: yPos(0.31),
+          fill: "#94a3b8",
+          "font-size": 10.5,
+          "font-family": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+          transform: `rotate(-36.5 ${xPos(0.295)} ${yPos(0.31)})`
+        },
+        "Perfect calibration"
+      );
+
+      // Plot both calibration series
+      const series = [
+        { label: "StatsBomb xG", data: COMPARISON.calibration.statsbomb, color: "#f59e0b" },
+        { label: "Our Model", data: COMPARISON.calibration.ours, color: "#38bdf8" }
+      ];
+
+      series.forEach((s) => {
+        const pts = s.data.map((d) => `${xPos(d.mean_pred).toFixed(2)},${yPos(d.observed_rate).toFixed(2)}`).join(" ");
+        addEl(svg, "polyline", {
+          points: pts,
+          fill: "none",
+          stroke: s.color,
+          "stroke-width": 2.4,
+          "stroke-linejoin": "round",
+          "stroke-linecap": "round"
+        });
+
+        s.data.forEach((d) => {
+          const cx = xPos(d.mean_pred);
+          const cy = yPos(d.observed_rate);
+          const dot = addEl(svg, "circle", {
+            cx: cx.toFixed(2),
+            cy: cy.toFixed(2),
+            r: 5,
+            fill: s.color,
+            stroke: "#0f172a",
+            "stroke-width": 1.6,
+            class: "cal-point",
+            tabindex: 0,
+            role: "button",
+            "aria-label": `${s.label} bin ${d.bin + 1}: predicted ${d.mean_pred.toFixed(4)}, observed ${d.observed_rate.toFixed(4)}, n=${d.n}`
+          });
+
+          const showTip = () => {
+            els.calTooltip.textContent =
+              `${s.label} · Bin ${d.bin + 1} (n=${d.n}): Predicted ${d.mean_pred.toFixed(4)} | Observed ${d.observed_rate.toFixed(4)}`;
+            dot.setAttribute("r", "7");
+          };
+          const hideTip = () => {
+            dot.setAttribute("r", "5");
+          };
+
+          dot.addEventListener("mouseenter", showTip);
+          dot.addEventListener("focus", showTip);
+          dot.addEventListener("mouseleave", hideTip);
+          dot.addEventListener("blur", hideTip);
+        });
+      });
+    }
+
+    // Initialize
+    initHeatmapGrid();
+    initRealShotsLayer();
+    runSelfTests();
+    render();
+    renderComparison();
+  </script>
+</body>
+</html>
